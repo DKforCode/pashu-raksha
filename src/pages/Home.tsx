@@ -1,13 +1,49 @@
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Users, Syringe, AlertTriangle, ClipboardCheck, Leaf } from "lucide-react";
 import { Link } from "react-router-dom";
+import { getAnimals, getVaccinations, getOutbreaks, getAssessments } from "@/lib/storage";
 
 const Home = () => {
-  const stats = [
-    { label: "Total Animals", value: "0", icon: Users, color: "text-primary" },
-    { label: "Vaccinations Due", value: "0", icon: Syringe, color: "text-accent" },
-    { label: "Active Alerts", value: "0", icon: AlertTriangle, color: "text-warning" },
-    { label: "Risk Score", value: "0%", icon: Shield, color: "text-success" },
+  const [stats, setStats] = useState({
+    totalAnimals: 0,
+    vaccinationsDue: 0,
+    activeAlerts: 0,
+    riskScore: 0,
+  });
+
+  useEffect(() => {
+    const animals = getAnimals();
+    const vaccinations = getVaccinations();
+    const outbreaks = getOutbreaks();
+    const assessments = getAssessments();
+
+    // Calculate vaccinations due today
+    const today = new Date();
+    const dueToday = vaccinations.filter(v => {
+      const nextDate = new Date(v.nextDate);
+      return nextDate.toDateString() === today.toDateString();
+    }).length;
+
+    // Active outbreaks count
+    const activeAlerts = outbreaks.filter(o => o.status === 'Active').length;
+
+    // Latest risk score
+    const latestScore = assessments.length > 0 ? assessments[assessments.length - 1].score : 0;
+
+    setStats({
+      totalAnimals: animals.length,
+      vaccinationsDue: dueToday,
+      activeAlerts: activeAlerts,
+      riskScore: latestScore,
+    });
+  }, []);
+
+  const statsDisplay = [
+    { label: "Total Animals", value: stats.totalAnimals.toString(), icon: Users, color: "text-primary" },
+    { label: "Vaccinations Due", value: stats.vaccinationsDue.toString(), icon: Syringe, color: "text-accent" },
+    { label: "Active Alerts", value: stats.activeAlerts.toString(), icon: AlertTriangle, color: "text-warning" },
+    { label: "Risk Score", value: `${stats.riskScore}%`, icon: Shield, color: "text-success" },
   ];
 
   const quickActions = [
@@ -37,7 +73,7 @@ const Home = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat, index) => (
+          {statsDisplay.map((stat, index) => (
             <Card key={index} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">

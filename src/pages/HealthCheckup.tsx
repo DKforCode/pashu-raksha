@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,10 +6,87 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Search, Plus, AlertCircle } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Activity, Plus } from "lucide-react";
+import { toast } from "sonner";
+import { getHealthCheckups, addHealthCheckup, addOutbreak } from "@/lib/storage";
 
 const HealthCheckup = () => {
   const [showForm, setShowForm] = useState(false);
+  const [checkups, setCheckups] = useState<any[]>([]);
+  const [formData, setFormData] = useState({
+    category: "",
+    breed: "",
+    barcode: "",
+    date: "",
+    weight: "",
+    condition: "",
+    diseaseName: "",
+    prevention: "",
+    notes: "",
+  });
+
+  useEffect(() => {
+    loadCheckups();
+  }, []);
+
+  const loadCheckups = () => {
+    setCheckups(getHealthCheckups());
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.category || !formData.breed || !formData.barcode || 
+        !formData.date || !formData.weight || !formData.condition) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    const newCheckup = {
+      id: Date.now().toString(),
+      date: formData.date,
+      animalBarcode: formData.barcode,
+      animalCategory: formData.category,
+      breed: formData.breed,
+      weight: parseFloat(formData.weight),
+      condition: formData.condition,
+      diseaseName: formData.diseaseName || undefined,
+      prevention: formData.prevention || undefined,
+      notes: formData.notes || undefined,
+    };
+
+    addHealthCheckup(newCheckup);
+
+    // If condition is severe or moderate and has disease, create outbreak
+    if ((formData.condition === 'severe' || formData.condition === 'moderate') && formData.diseaseName) {
+      const outbreak = {
+        id: Date.now().toString(),
+        date: formData.date,
+        diseaseName: formData.diseaseName,
+        animalBarcode: formData.barcode,
+        preventionMethod: formData.prevention || "Treatment in progress",
+        status: "Active"
+      };
+      addOutbreak(outbreak);
+      toast.warning("Disease outbreak registered");
+    }
+
+    loadCheckups();
+    toast.success("Health checkup recorded successfully");
+    setShowForm(false);
+    setFormData({
+      category: "",
+      breed: "",
+      barcode: "",
+      date: "",
+      weight: "",
+      condition: "",
+      diseaseName: "",
+      prevention: "",
+      notes: "",
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background py-8">
@@ -33,7 +110,7 @@ const HealthCheckup = () => {
             <CardContent>
               <div className="flex items-center justify-center py-2">
                 <div className="text-center">
-                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-2xl font-bold">{checkups.filter(c => c.date === new Date().toISOString().split('T')[0]).length}</p>
                   <p className="text-sm text-muted-foreground">Checkups</p>
                 </div>
               </div>
@@ -47,8 +124,8 @@ const HealthCheckup = () => {
             <CardContent>
               <div className="flex items-center justify-center py-2">
                 <div className="text-center">
-                  <p className="text-2xl font-bold">0</p>
-                  <p className="text-sm text-muted-foreground">Scheduled</p>
+                  <p className="text-2xl font-bold">{checkups.length}</p>
+                  <p className="text-sm text-muted-foreground">Total</p>
                 </div>
               </div>
             </CardContent>
@@ -61,8 +138,8 @@ const HealthCheckup = () => {
             <CardContent>
               <div className="flex items-center justify-center py-2">
                 <div className="text-center">
-                  <AlertCircle className="h-8 w-8 text-warning mx-auto mb-1" />
-                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-2xl font-bold text-warning">{checkups.filter(c => c.condition !== 'healthy').length}</p>
+                  <p className="text-sm text-muted-foreground">Issues</p>
                 </div>
               </div>
             </CardContent>
@@ -75,8 +152,8 @@ const HealthCheckup = () => {
             <CardContent>
               <div className="flex items-center justify-center py-2">
                 <div className="text-center">
-                  <p className="text-2xl font-bold">0</p>
-                  <p className="text-sm text-muted-foreground">Total</p>
+                  <p className="text-2xl font-bold">{checkups.filter(c => c.condition === 'healthy').length}</p>
+                  <p className="text-sm text-muted-foreground">Animals</p>
                 </div>
               </div>
             </CardContent>
@@ -90,44 +167,44 @@ const HealthCheckup = () => {
               <CardDescription>Record a health inspection</CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Animal Category</Label>
-                    <Select>
+                    <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pig">Pig</SelectItem>
-                        <SelectItem value="poultry">Poultry</SelectItem>
+                        <SelectItem value="Pig">Pig</SelectItem>
+                        <SelectItem value="Poultry">Poultry</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
                     <Label>Breed</Label>
-                    <Input placeholder="Enter breed" />
+                    <Input placeholder="Enter breed" value={formData.breed} onChange={(e) => setFormData({...formData, breed: e.target.value})} />
                   </div>
 
                   <div className="space-y-2">
                     <Label>Animal Barcode</Label>
-                    <Input placeholder="Scan or enter barcode" />
+                    <Input placeholder="Scan or enter barcode" value={formData.barcode} onChange={(e) => setFormData({...formData, barcode: e.target.value})} />
                   </div>
 
                   <div className="space-y-2">
                     <Label>Checkup Date</Label>
-                    <Input type="date" />
+                    <Input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} />
                   </div>
 
                   <div className="space-y-2">
                     <Label>Weight (kg)</Label>
-                    <Input type="number" step="0.1" placeholder="Current weight" />
+                    <Input type="number" step="0.1" placeholder="Current weight" value={formData.weight} onChange={(e) => setFormData({...formData, weight: e.target.value})} />
                   </div>
 
                   <div className="space-y-2">
                     <Label>Health Condition</Label>
-                    <Select>
+                    <Select value={formData.condition} onValueChange={(value) => setFormData({...formData, condition: value})}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select condition" />
                       </SelectTrigger>
@@ -142,17 +219,17 @@ const HealthCheckup = () => {
 
                   <div className="space-y-2 md:col-span-2">
                     <Label>Disease Name (if any)</Label>
-                    <Input placeholder="Enter disease name or leave blank" />
+                    <Input placeholder="Enter disease name or leave blank" value={formData.diseaseName} onChange={(e) => setFormData({...formData, diseaseName: e.target.value})} />
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
                     <Label>Prevention / Treatment</Label>
-                    <Textarea placeholder="Enter prevention methods or treatment details" rows={3} />
+                    <Textarea placeholder="Enter prevention methods or treatment details" rows={3} value={formData.prevention} onChange={(e) => setFormData({...formData, prevention: e.target.value})} />
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
                     <Label>Additional Notes</Label>
-                    <Textarea placeholder="Any other observations" rows={3} />
+                    <Textarea placeholder="Any other observations" rows={3} value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} />
                   </div>
                 </div>
 
@@ -173,11 +250,42 @@ const HealthCheckup = () => {
             <CardDescription>Complete health history of animals</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12 text-muted-foreground">
-              <Activity className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <p>No health checkup records found</p>
-              <p className="text-sm mt-2">Add your first health checkup to start tracking</p>
-            </div>
+            {checkups.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Barcode</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Weight</TableHead>
+                    <TableHead>Condition</TableHead>
+                    <TableHead>Disease</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {checkups.map((checkup) => (
+                    <TableRow key={checkup.id}>
+                      <TableCell>{checkup.date}</TableCell>
+                      <TableCell>{checkup.animalBarcode}</TableCell>
+                      <TableCell>{checkup.animalCategory}</TableCell>
+                      <TableCell>{checkup.weight} kg</TableCell>
+                      <TableCell>
+                        <Badge variant={checkup.condition === 'healthy' ? 'default' : 'destructive'}>
+                          {checkup.condition}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{checkup.diseaseName || 'None'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <Activity className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                <p>No health checkup records found</p>
+                <p className="text-sm mt-2">Add your first health checkup to start tracking</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -1,9 +1,18 @@
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertTriangle, TrendingDown, Shield } from "lucide-react";
+import { AlertTriangle, Shield } from "lucide-react";
+import { getOutbreaks } from "@/lib/storage";
 
 const DiseaseOutbreak = () => {
+  const [outbreaks, setOutbreaks] = useState<any[]>([]);
+
+  useEffect(() => {
+    setOutbreaks(getOutbreaks());
+  }, []);
+
+  const activeOutbreaks = outbreaks.filter(o => o.status === 'Active').length;
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="container mx-auto px-4">
@@ -21,7 +30,7 @@ const DiseaseOutbreak = () => {
               <div className="flex items-center justify-center py-4">
                 <div className="text-center">
                   <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-2" />
-                  <p className="text-3xl font-bold">0</p>
+                  <p className="text-3xl font-bold">{activeOutbreaks}</p>
                   <p className="text-sm text-muted-foreground">Current cases</p>
                 </div>
               </div>
@@ -36,8 +45,8 @@ const DiseaseOutbreak = () => {
               <div className="flex items-center justify-center py-4">
                 <div className="text-center">
                   <Shield className="h-12 w-12 text-warning mx-auto mb-2" />
-                  <p className="text-3xl font-bold">0</p>
-                  <p className="text-sm text-muted-foreground">This month</p>
+                  <p className="text-3xl font-bold">{outbreaks.length}</p>
+                  <p className="text-sm text-muted-foreground">Total</p>
                 </div>
               </div>
             </CardContent>
@@ -50,9 +59,8 @@ const DiseaseOutbreak = () => {
             <CardContent>
               <div className="flex items-center justify-center py-4">
                 <div className="text-center">
-                  <TrendingDown className="h-12 w-12 text-success mx-auto mb-2" />
-                  <p className="text-3xl font-bold">-</p>
-                  <p className="text-sm text-muted-foreground">No data yet</p>
+                  <p className="text-3xl font-bold text-success">{outbreaks.filter(o => o.status === 'Resolved').length}</p>
+                  <p className="text-sm text-muted-foreground">Resolved</p>
                 </div>
               </div>
             </CardContent>
@@ -68,11 +76,38 @@ const DiseaseOutbreak = () => {
             <CardDescription>Real-time monitoring of disease outbreaks</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12 text-muted-foreground">
-              <Shield className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">No active disease outbreaks</p>
-              <p className="text-sm mt-2">Disease outbreaks will automatically appear here when detected</p>
-            </div>
+            {activeOutbreaks > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Disease Name</TableHead>
+                    <TableHead>Animal Barcode</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Prevention Method</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {outbreaks.filter(o => o.status === 'Active').map((outbreak) => (
+                    <TableRow key={outbreak.id}>
+                      <TableCell>{outbreak.date}</TableCell>
+                      <TableCell>{outbreak.diseaseName}</TableCell>
+                      <TableCell>{outbreak.animalBarcode}</TableCell>
+                      <TableCell>
+                        <Badge variant="destructive">{outbreak.status}</Badge>
+                      </TableCell>
+                      <TableCell>{outbreak.preventionMethod}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <Shield className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium">No active disease outbreaks</p>
+                <p className="text-sm mt-2">Disease outbreaks will automatically appear here when detected</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -93,11 +128,27 @@ const DiseaseOutbreak = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    No outbreak history available
-                  </TableCell>
-                </TableRow>
+                {outbreaks.length > 0 ? (
+                  outbreaks.map((outbreak) => (
+                    <TableRow key={outbreak.id}>
+                      <TableCell>{outbreak.date}</TableCell>
+                      <TableCell>{outbreak.diseaseName}</TableCell>
+                      <TableCell>{outbreak.animalBarcode}</TableCell>
+                      <TableCell>
+                        <Badge variant={outbreak.status === 'Resolved' ? 'default' : 'destructive'}>
+                          {outbreak.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{outbreak.preventionMethod}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      No outbreak history available
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>

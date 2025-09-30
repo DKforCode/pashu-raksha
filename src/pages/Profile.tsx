@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Building, User, Phone } from "lucide-react";
+import { MapPin, Building, User } from "lucide-react";
 import { toast } from "sonner";
+import { getAnimals } from "@/lib/storage";
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
+  const [totalAnimals, setTotalAnimals] = useState(0);
   const [formData, setFormData] = useState({
     ownerName: "Farm Owner",
     farmName: "My Farm",
@@ -20,8 +22,12 @@ const Profile = () => {
     latitude: "",
     longitude: "",
     mobile: "",
-    totalAnimals: "0"
   });
+
+  useEffect(() => {
+    const animals = getAnimals();
+    setTotalAnimals(animals.length);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +74,7 @@ const Profile = () => {
               <div className="flex items-center justify-center flex-col">
                 <MapPin className="h-12 w-12 text-primary mb-2" />
                 <p className="text-sm text-muted-foreground">Total Animals</p>
-                <p className="font-semibold text-lg">{formData.totalAnimals}</p>
+                <p className="font-semibold text-lg">{totalAnimals}</p>
               </div>
             </CardContent>
           </Card>

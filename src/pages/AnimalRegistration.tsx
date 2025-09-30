@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import JsBarcode from "jsbarcode";
+import { addAnimal, generateBarcode } from "@/lib/storage";
 
 const AnimalRegistration = () => {
   const [formData, setFormData] = useState({
@@ -18,24 +19,17 @@ const AnimalRegistration = () => {
     state: "",
   });
   const [generatedBarcode, setGeneratedBarcode] = useState<string | null>(null);
+  const [barcodeId, setBarcodeId] = useState<string | null>(null);
 
-  const generateBarcode = () => {
-    // Generate a unique barcode ID
-    const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 1000);
-    const barcodeId = `${formData.category.substring(0, 2).toUpperCase()}${timestamp}${random}`;
-    
-    // Create canvas and generate barcode
+  const generateBarcodeImage = (id: string) => {
     const canvas = document.createElement('canvas');
-    JsBarcode(canvas, barcodeId, {
+    JsBarcode(canvas, id, {
       format: "CODE128",
       width: 2,
       height: 80,
       displayValue: true
     });
-    
     setGeneratedBarcode(canvas.toDataURL());
-    return barcodeId;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -47,8 +41,34 @@ const AnimalRegistration = () => {
       return;
     }
 
-    const barcodeId = generateBarcode();
-    toast.success(`Animal registered successfully! Barcode: ${barcodeId}`);
+    const newBarcodeId = generateBarcode(formData.category);
+    const newAnimal = {
+      id: Date.now().toString(),
+      barcode: newBarcodeId,
+      category: formData.category,
+      breed: formData.breed,
+      dob: `${formData.dobYear}-${formData.dobMonth.padStart(2, '0')}`,
+      weight: parseFloat(formData.weight),
+      district: formData.district,
+      state: formData.state,
+      registrationDate: new Date().toISOString().split('T')[0]
+    };
+    
+    addAnimal(newAnimal);
+    setBarcodeId(newBarcodeId);
+    generateBarcodeImage(newBarcodeId);
+    toast.success(`Animal registered successfully! Barcode: ${newBarcodeId}`);
+    
+    // Reset form
+    setFormData({
+      category: "",
+      breed: "",
+      dobMonth: "",
+      dobYear: "",
+      weight: "",
+      district: "",
+      state: "",
+    });
   };
 
   const currentYear = new Date().getFullYear();

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,9 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
+import { getVisitors, addVisitor } from "@/lib/storage";
 
 const Visitor = () => {
   const [showForm, setShowForm] = useState(false);
+  const [visitors, setVisitors] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     dob: "",
@@ -18,12 +20,33 @@ const Visitor = () => {
     purpose: ""
   });
 
+  useEffect(() => {
+    loadVisitors();
+  }, []);
+
+  const loadVisitors = () => {
+    setVisitors(getVisitors());
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.mobile || !formData.purpose) {
       toast.error("Please fill all required fields");
       return;
     }
+
+    const newVisitor = {
+      id: Date.now().toString(),
+      date: new Date().toISOString().split('T')[0],
+      name: formData.name,
+      dob: formData.dob || undefined,
+      mobile: formData.mobile,
+      address: formData.address || undefined,
+      purpose: formData.purpose,
+    };
+
+    addVisitor(newVisitor);
+    loadVisitors();
     toast.success("Visitor registered successfully");
     setFormData({ name: "", dob: "", mobile: "", address: "", purpose: "" });
     setShowForm(false);
@@ -52,7 +75,7 @@ const Visitor = () => {
               <div className="flex items-center justify-center py-4">
                 <div className="text-center">
                   <Users className="h-10 w-10 text-primary mx-auto mb-2" />
-                  <p className="text-3xl font-bold">0</p>
+                  <p className="text-3xl font-bold">{visitors.filter(v => v.date === new Date().toISOString().split('T')[0]).length}</p>
                   <p className="text-sm text-muted-foreground">Visitors</p>
                 </div>
               </div>
@@ -66,7 +89,7 @@ const Visitor = () => {
             <CardContent>
               <div className="flex items-center justify-center py-4">
                 <div className="text-center">
-                  <p className="text-3xl font-bold">0</p>
+                  <p className="text-3xl font-bold">{visitors.length}</p>
                   <p className="text-sm text-muted-foreground">Total visits</p>
                 </div>
               </div>
@@ -80,8 +103,8 @@ const Visitor = () => {
             <CardContent>
               <div className="flex items-center justify-center py-4">
                 <div className="text-center">
-                  <p className="text-3xl font-bold">0</p>
-                  <p className="text-sm text-muted-foreground">Total visits</p>
+                  <p className="text-3xl font-bold">{visitors.length}</p>
+                  <p className="text-sm text-muted-foreground">All time</p>
                 </div>
               </div>
             </CardContent>
@@ -178,11 +201,23 @@ const Visitor = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    No visitor records found
-                  </TableCell>
-                </TableRow>
+                {visitors.length > 0 ? (
+                  visitors.map((visitor) => (
+                    <TableRow key={visitor.id}>
+                      <TableCell>{visitor.date}</TableCell>
+                      <TableCell>{visitor.name}</TableCell>
+                      <TableCell>{visitor.mobile}</TableCell>
+                      <TableCell>{visitor.purpose}</TableCell>
+                      <TableCell>{visitor.address || '-'}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      No visitor records found
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>

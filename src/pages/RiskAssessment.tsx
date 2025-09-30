@@ -1,16 +1,31 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Shield, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Shield, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { getAssessments, addAssessment } from "@/lib/storage";
 
 const RiskAssessment = () => {
   const [currentScore, setCurrentScore] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [assessmentHistory, setAssessmentHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const loadHistory = () => {
+    const history = getAssessments();
+    setAssessmentHistory(history);
+    if (history.length > 0) {
+      setCurrentScore(history[history.length - 1].score);
+    }
+  };
 
   const questions = [
     {
@@ -58,6 +73,16 @@ const RiskAssessment = () => {
 
     const avgScore = Math.round(score / totalQuestions);
     setCurrentScore(avgScore);
+    
+    const newAssessment = {
+      id: Date.now().toString(),
+      date: new Date().toISOString().split('T')[0],
+      score: avgScore,
+      answers: { ...answers },
+    };
+
+    addAssessment(newAssessment);
+    loadHistory();
     toast.success("Risk assessment completed");
   };
 
@@ -146,11 +171,40 @@ const RiskAssessment = () => {
             <CardDescription>Track your farm's risk score over time</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12 text-muted-foreground">
-              <TrendingUp className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <p>No assessment history yet</p>
-              <p className="text-sm mt-2">Complete your first assessment to start tracking</p>
-            </div>
+            {assessmentHistory.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Risk Score</TableHead>
+                    <TableHead>Risk Level</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {assessmentHistory.map((assessment) => (
+                    <TableRow key={assessment.id}>
+                      <TableCell>{assessment.date}</TableCell>
+                      <TableCell>{assessment.score}%</TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          assessment.score >= 80 ? 'default' :
+                          assessment.score >= 60 ? 'secondary' : 'destructive'
+                        }>
+                          {assessment.score >= 80 ? 'Low Risk' :
+                           assessment.score >= 60 ? 'Medium Risk' : 'High Risk'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <TrendingUp className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                <p>No assessment history yet</p>
+                <p className="text-sm mt-2">Complete your first assessment to start tracking</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
